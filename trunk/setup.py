@@ -1,4 +1,4 @@
-#$Id:$
+#$Id$
 
 from setuptools import setup
 
@@ -17,8 +17,8 @@ Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike 
         "License :: OSI Approved :: GNU General Public License (GPL)",
         ],
       keywords='python, nilsimsa, hash, locality-sensitive, duplicate detection',
-      author='',
-      author_email='',
+      author='John R. Frank',
+      author_email='postshift gmail',
       url='http://code.google.com/p/py-nilsimsa/',
       license="GPL",
       zip_safe=False,
@@ -26,5 +26,6 @@ Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike 
       entry_points="""
       # -*- Entry points: -*-
       """,
+      packages=['nilsimsa'],
       scripts=['nilsimsa.py'],
       )
