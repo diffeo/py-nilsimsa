@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-version = '0.1'
+version = '0.2.0'
 
 setup(name='nilsimsa',
       version=version,
@@ -17,7 +17,8 @@ Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike 
         "License :: OSI Approved :: GNU General Public License (GPL)",
         ],
       keywords='python, nilsimsa, hash, locality-sensitive, duplicate detection',
-      author='John R. Frank',
+      author='cmeclax',
+      maintainer='John R. Frank',
       author_email='postshift gmail',
       url='http://code.google.com/p/py-nilsimsa/',
       license="GPL",
@@ -27,5 +28,5 @@ Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike 
       # -*- Entry points: -*-
       """,
       packages=['nilsimsa'],
-      scripts=['nilsimsa.py'],
+      scripts=['run_nilsimsa.py'],
       )
