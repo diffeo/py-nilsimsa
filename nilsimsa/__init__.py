@@ -1,50 +1,15 @@
-# Copyright (C) MetaCarta, Incorporated.
-#
-#  This program is free software; you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation.
-#  
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#  
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-# Port of nilsimsa-20050414.rb from Ruby to Python 
-#
-# Ported by Michael Itz at MetaCarta
-#
-# Original comments from Ruby version:
-# ---------------------------------------------------------
-# Nilsimsa hash (build 20050414)
-# Ruby port (C) 2005 Martin Pirker
-# released under GNU GPL V2 license
-# 
-# inspired by Digest::Nilsimsa-0.06 from Perl CPAN and
-# the original C nilsimsa-0.2.4 implementation by cmeclax
-#  http://ixazon.dynip.com/~cmeclax/nilsimsa.html
-# ---------------------------------------------------------
 """
-Computes and compares nilsimsa codes.
+Class and helper functions to compute and compare nilsimsa digests.
 
-A nilsimsa code is something like a hash, but unlike hashes, a small
-change in the message results in a small change in the nilsimsa
-code. Such a function is called a locality-sensitive hash.
-
-Python port of ruby version that was inspired by a perl version:
-   http://ixazon.dynip.com/~cmeclax/nilsimsa.html
+The Nilsimsa hash is a locality senstive hash function, generally
+similar documents will have similar Nilsimsa digests. The hamming distance
+between the digests can be used to approximate the similarity between
+documents. For further information consult http://en.wikipedia.org/wiki/Nilsimsa_Hash and the references (particularly Damiani et al.)
 """
 
-# $ Id: $
-
-# table used in computing trigram statistics
-#   TRAN[x] is the accumulator that should be incremented when x
-#   is the value observed from hashing a triplet of recently
-#   seen characters (done in Nilsimsa.tran3(a, b, c, n))
-TRAN = [ord(x) for x in 
+# Constant used in tran53 hash function, contains values 0 <= x <= 255
+# see implementation of tran_hash() below for details on usage
+TRAN = [ord(x) for x in
     "\x02\xD6\x9E\x6F\xF9\x1D\x04\xAB\xD0\x22\x16\x1F\xD8\x73\xA1\xAC"\
     "\x3B\x70\x62\x96\x1E\x6E\x8F\x39\x9D\x05\x14\x4A\xA6\xBE\xAE\x0E"\
     "\xCF\xB9\x9C\x9A\xC7\x68\x13\xE1\x2D\xA4\xEB\x51\x8D\x64\x6B\x50"\
@@ -62,10 +27,9 @@ TRAN = [ord(x) for x in
     "\xDB\xB0\xE2\x97\x88\x52\xF7\x48\xD3\x61\x2C\x3A\x2B\xD1\x8C\xFB"\
     "\xF1\xCD\xE4\x6A\xE7\xA9\xFD\xC4\x37\xC8\xD2\xF6\xDF\x58\x72\x4E"]
 
-# table used in comparing bit differences between digests
-#   POPC[x] = <number of 1 bits in x>
-#     so...
-#   POPC[a^b] = <number of bits different between a and b>
+# Shortcut to compute the Hamming distance between two bit vector representations of integers
+# POPC - population count, POPC[x] = number of 1's in binary representation of x
+# POPC[a ^b] = hamming distance from a to b
 POPC = [ord(x) for x in
     "\x00\x01\x01\x02\x01\x02\x02\x03\x01\x02\x02\x03\x02\x03\x03\x04"\
     "\x01\x02\x02\x03\x02\x03\x03\x04\x02\x03\x03\x04\x03\x04\x04\x05"\
@@ -84,117 +48,142 @@ POPC = [ord(x) for x in
     "\x03\x04\x04\x05\x04\x05\x05\x06\x04\x05\x05\x06\x05\x06\x06\x07"\
     "\x04\x05\x05\x06\x05\x06\x06\x07\x05\x06\x06\x07\x06\x07\x07\x08"]
 
-class Nilsimsa(object):
-    """Nilsimsa code calculator."""
 
-    def __init__(self, data=None):
-        """Nilsimsa calculator, w/optional list of initial data chunks."""
-        self.count = 0          # num characters seen
-        self.acc = [0]*256      # accumulators for computing digest
-        self.lastch = [-1]*4    # last four seen characters (-1 until set)
+class Nilsimsa(object):
+    """
+    computes the nilsimsa has of an input data block, which can be an
+    iterator over chunks, with each chunk corresponding to a block of text
+    """
+    def __init__(self, data = None):
+        # data comes as an iterator over chunks, which are an iterator over characters
+        self.complete = False       # flag to prevent re-computation
+        self.num_char = 0           # Number of characters that we have come across
+        self.acc = [0] * 256        # 256-bit vector to hold the results of the digest
+        self.window = []            # holds the window of the last 4 characters
         if data:
             for chunk in data:
-                self.update(chunk)
+                self.process(chunk)
 
-    def tran3(self, a, b, c, n):
-        """Get accumulator for a transition n between chars a, b, c."""
+    def tran_hash(self, a, b, c, n):
+        """implementation of the tran53 hash function"""
         return (((TRAN[(a+n)&255]^TRAN[b]*(n+n+1))+TRAN[(c)^TRAN[n]])&255)
-  
-    def update(self, data):
-        """Add data to running digest, increasing the accumulators for 0-8
-           triplets formed by this char and the previous 0-3 chars."""
-        for character in data:
-            ch = ord(character)
-            self.count += 1
 
-            # incr accumulators for triplets
-            if self.lastch[1] > -1:
-                self.acc[self.tran3(ch, self.lastch[0], self.lastch[1], 0)] +=1
-            if self.lastch[2] > -1:
-                self.acc[self.tran3(ch, self.lastch[0], self.lastch[2], 1)] +=1
-                self.acc[self.tran3(ch, self.lastch[1], self.lastch[2], 2)] +=1
-            if self.lastch[3] > -1:
-                self.acc[self.tran3(ch, self.lastch[0], self.lastch[3], 3)] +=1
-                self.acc[self.tran3(ch, self.lastch[1], self.lastch[3], 4)] +=1
-                self.acc[self.tran3(ch, self.lastch[2], self.lastch[3], 5)] +=1
-                self.acc[self.tran3(self.lastch[3], self.lastch[0], ch, 6)] +=1
-                self.acc[self.tran3(self.lastch[3], self.lastch[2], ch, 7)] +=1
+    def process(self, chunk):
+        """
+        computes the hash of all of the trigrams in the chunk using a window
+        of length 5
+        """
+        # chunk is an iterator over characters
+        for char in chunk:
+            self.num_char += 1
+            c = ord(char)
+            if len(self.window) > 1:            # seen at least three characters
+                self.acc[self.tran_hash(c, self.window[0], self.window[1], 0)] += 1
+            if len(self.window) > 2:            # seen at least four characters
+                self.acc[self.tran_hash(c, self.window[0], self.window[2], 1)] += 1
+                self.acc[self.tran_hash(c, self.window[1], self.window[2], 2)] += 1
+            if len(self.window) > 3:            # have a full window
+                self.acc[self.tran_hash(c, self.window[0], self.window[3], 3)] += 1
+                self.acc[self.tran_hash(c, self.window[1], self.window[3], 4)] += 1
+                self.acc[self.tran_hash(c, self.window[2], self.window[3], 5)] += 1
+                # duplicate hashes, used to maintain 8 trigrams per character
+                self.acc[self.tran_hash(self.window[3], self.window[0], c, 6)] += 1
+                self.acc[self.tran_hash(self.window[3], self.window[2], c, 7)] += 1
 
-            # adjust last seen chars
-            self.lastch = [ch] + self.lastch[:3]
+            # add current character to the window, remove the previous character
+            if len(self.window) < 4:
+                self.window = [c] + self.window
+            else:
+                self.window = [c] + self.window[:3]
+
+
+    def compute_digest(self):
+        """
+        using a threshold (mean of the accumulator), computes the nilsimsa hash
+        after completion sets complete flag to true and stores result in
+        self.digest
+        """
+        # uses the mean of the acc buckets
+        num_trigrams = 0
+        if self.num_char == 3:          # 3 chars -> 1 trigram
+            num_trigrams = 1
+        elif self.num_char == 4:        # 4 chars -> 4 trigrams
+            num_trigrams = 4
+        elif self.num_char > 4:         # > 4 chars -> 8 for each char
+            num_trigrams = 8 * self.num_char - 28
+
+        threshold = num_trigrams / 256.0
+
+        digest = [0] * 32
+        for i in range(256):
+            if self.acc[i] > threshold:
+                digest[i >> 3] += 1 << (i & 7)      # equivalent to i/8, 2**(i mod 7)
+
+        self.complete = True            # set flag to True
+        self.digest = digest[::-1]      # store result in digest, reversed
 
     def digest(self):
-        """Get digest of data seen thus far as a list of bytes."""
-        total = 0                           # number of triplets seen
-        if self.count == 3:                 # 3 chars = 1 triplet
-            total = 1
-        elif self.count == 4:               # 4 chars = 4 triplets
-            total = 4
-        elif self.count > 4:                # otherwise 8 triplets/char less
-            total = 8 * self.count - 28     # 28 'missed' during 'ramp-up'
+        """
+        returns the digest, if it has not been computed, calls compute_digest
+        """
+        if not self.complete:
+            self.compute_digest()
+        return self.digest
 
-        threshold = total / 256             # threshold for accumulators
-
-        code = [0]*32                       # start with all zero bits
-        for i in range(256):                # for all 256 accumulators
-            if self.acc[i] > threshold:     # if it meets the threshold
-                code[i >> 3] += 1 << (i&7)  # set corresponding digest bit
-
-        return code[::-1]                   # reverse the byte order in result
-  
     def hexdigest(self):
-        """Get digest of data seen this far as a 64-char hex string."""
-        return ("%02x" * 32) % tuple(self.digest())
-  
+        """
+        computes the hex of the digest
+        """
+        if not self.complete:
+            self.compute_digest()
+
+        return ''.join('%02x'%i for i in self.digest)
+
     def __str__(self):
-        """Show digest for convenience."""
+        """convenience function"""
         return self.hexdigest()
-   
-    def from_file(self, filename):
-        """Update running digest with content of named file."""
-        f = open(filename, 'rb')
-        while True:
-            data = f.read(10480)
-            if not data:
-                break
-            self.update(data)
+
+    def from_file(self, fname):
+        """read in a file and compute digest"""
+        f = open(fname, "rb")
+        data = f.read()
+        self.update(data)
         f.close()
 
-    def compare(self, otherdigest, ishex=False):
-        """Compute difference in bits between own digest and another.
-           returns -127 to 128; 128 is the same, -127 is different"""
-        bits = 0
-        myd = self.digest()
-        if ishex:
-            # convert to 32-tuple of unsighed two-byte INTs
-            otherdigest = tuple([int(otherdigest[i:i+2],16) for i in range(0,63,2)])
-        for i in range(32):
-            bits += POPC[255 & myd[i] ^ otherdigest[i]]
-        return 128 - bits
+    def compare(self, digest_2, is_hex = False):
+        """
+        returns difference between the nilsimsa digests between the current
+        object and a given digest
+        """
+        if not self.complete:
+            digest = self.compute_digest()
+        else:
+            digest = self.digest
 
-def compare_hexdigests( digest1, digest2 ):
-    """Compute difference in bits between digest1 and digest2
-       returns -127 to 128; 128 is the same, -127 is different"""
-    # convert to 32-tuple of unsighed two-byte INTs
-    digest1 = tuple([int(digest1[i:i+2],16) for i in range(0,63,2)])
-    digest2 = tuple([int(digest2[i:i+2],16) for i in range(0,63,2)])
-    bits = 0
-    for i in range(32):
-        bits += POPC[255 & digest1[i] ^ digest2[i]]
-    return 128 - bits
+        # convert hex string to list of ints
+        if is_hex:
+            digest_2 = [int(digest_2[i:i+2], 16) for i in range(0, 63, 2)]
 
-def selftest( name=None, opt=None, value=None, parser=None ):
-    print "running selftest..."
-    n1 = Nilsimsa()
-    n1.update("abcdefgh")
-    n2 = Nilsimsa(["abcd", "efgh"])
-    print "abcdefgh:\t%s" % str(n1.hexdigest()==\
-        '14c8118000000000030800000004042004189020001308014088003280000078')
-    print "abcd efgh:\t%s" % str(n2.hexdigest()==\
-        '14c8118000000000030800000004042004189020001308014088003280000078')
-    print "digest:\t\t%s" % str(n1.digest() == n2.digest())
-    n1.update("ijk")
-    print "update(ijk):\t%s" % str(n1.hexdigest()==\
-        '14c811840010000c0328200108040630041890200217582d4098103280000078')
-    print "compare:\t%s" % str(n1.compare(n2.digest())==109)
-    print "compare:\t%s" % str(n1.compare(n2.hexdigest(), ishex=True)==109)
+        bit_diff = 0
+        for i in range(len(digest)):
+            bit_diff += POPC[digest[i] ^ digest_2[i]]           #computes the bit diff between the i'th position of the digests
+
+        return 128 - bit_diff       # -128 <= nilsimsa score <= 128
+
+
+def compare_digests(digest_1, digest_2, is_hex_1 = True, is_hex_2 = True):
+    """
+    computes bit difference between two nilsisa digests
+    takes params for format, default is hex string but can accept list
+    of 32 length ints
+    """
+    # if the input is a hex string, convert to list of ints
+    if is_hex_1:
+        digest_1 =  [int(digest_1[i:i+2], 16) for i in range(0, 63, 2)]
+    if is_hex_2:
+        digest_2 =  [int(digest_2[i:i+2], 16) for i in range(0, 63, 2)]
+    bit_diff = 0
+    for i in range(len(digest_1)):
+        bit_diff += POPC[digest_1[i] ^ digest_2[i]]
+    return 128 - bit_diff
+

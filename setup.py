@@ -14,19 +14,19 @@ Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike 
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Topic :: Text Processing :: Indexing",
-        "License :: OSI Approved :: GNU General Public License (GPL)",
+        "License :: OSI Approved :: MIT X11",
         ],
       keywords='python, nilsimsa, hash, locality-sensitive, duplicate detection',
-      author='cmeclax',
-      maintainer='John R. Frank',
-      author_email='postshift gmail',
+      author'Nithin Tumma',
+      maintainer='nithintumma',
+      author_email='nithintumma gmail',
       url='http://code.google.com/p/py-nilsimsa/',
-      license="GPL",
+      license="MIT X11",
       zip_safe=False,
       install_requires=[],
       entry_points="""
       # -*- Entry points: -*-
       """,
       packages=['nilsimsa'],
-      scripts=['run_nilsimsa.py'],
+      package_data = {"nilsimsa": ["test_data/*.txt", "test_data/*.p"]}
       )
