@@ -1,10 +1,22 @@
 """
-Class and helper functions to compute and compare nilsimsa digests.
+Purpose: Class and helper functions to compute and compare nilsimsa digests.
 
 The Nilsimsa hash is a locality senstive hash function, generally
-similar documents will have similar Nilsimsa digests. The hamming distance
-between the digests can be used to approximate the similarity between
-documents. For further information consult http://en.wikipedia.org/wiki/Nilsimsa_Hash and the references (particularly Damiani et al.)
+similar documents will have similar Nilsimsa digests.
+The hamming distance between the digests can be used to approximate
+the similarity between documents.
+For further information consult http://en.wikipedia.org/wiki/Nilsimsa_Hash
+and the references (particularly Damiani et al.)
+
+Implementation details:
+Nilsimsa class takes in a data paramater that can be an iterator over chunks of text or a text string.
+Calling the methods hexdigest() and digest() give the nilsimsa
+digest of the input data.
+The helper function compare_digests takes in two digests and computes the Nilsimsa score.
+
+This software is released under an MIT/X11 open source license.
+
+Copyright 2012-2014 Diffeo, Inc.
 """
 
 # Constant used in tran53 hash function, contains values 0 <= x <= 255
@@ -99,11 +111,10 @@ class Nilsimsa(object):
 
     def compute_digest(self):
         """
-        using a threshold (mean of the accumulator), computes the nilsimsa hash
+        using a threshold (mean of the accumulator), computes the nilsimsa digest
         after completion sets complete flag to true and stores result in
         self.digest
         """
-        # uses the mean of the acc buckets
         num_trigrams = 0
         if self.num_char == 3:          # 3 chars -> 1 trigram
             num_trigrams = 1
@@ -112,6 +123,7 @@ class Nilsimsa(object):
         elif self.num_char > 4:         # > 4 chars -> 8 for each char
             num_trigrams = 8 * self.num_char - 28
 
+        # threshhold is the mean of the acc buckets
         threshold = num_trigrams / 256.0
 
         digest = [0] * 32
@@ -176,14 +188,22 @@ def compare_digests(digest_1, digest_2, is_hex_1 = True, is_hex_2 = True):
     computes bit difference between two nilsisa digests
     takes params for format, default is hex string but can accept list
     of 32 length ints
+    Optimized method originally from https://gist.github.com/michelp/6255490
     """
-    # if the input is a hex string, convert to list of ints
-    if is_hex_1:
-        digest_1 =  [int(digest_1[i:i+2], 16) for i in range(0, 63, 2)]
-    if is_hex_2:
-        digest_2 =  [int(digest_2[i:i+2], 16) for i in range(0, 63, 2)]
-    bit_diff = 0
-    for i in range(len(digest_1)):
-        bit_diff += POPC[digest_1[i] ^ digest_2[i]]
-    return 128 - bit_diff
+    # if we have both hexes use optimized method
+    if is_hex_1 and is_hex_2:
+        bits =  0
+        for i in xrange(0, 63, 2):
+            bits += POPC[255 & int(digest_1[i:i+2], 16) ^ int(digest_2[i:i+2], 16)]
+        return 128 - bits
+    else:
+        # at least one of the inputs is a list of unsigned ints
+        if is_hex_1:
+            digest_1 =  [int(digest_1[i:i+2], 16) for i in range(0, 63, 2)]
+        if is_hex_2:
+            digest_2 =  [int(digest_2[i:i+2], 16) for i in range(0, 63, 2)]
+        bit_diff = 0
+        for i in range(len(digest_1)):
+            bit_diff += POPC[255 & digest_1[i] ^ digest_2[i]]
+        return 128 - bit_diff
 
