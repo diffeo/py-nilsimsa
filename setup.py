@@ -15,7 +15,7 @@ Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike 
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Topic :: Text Processing :: Indexing",
-        "License :: OSI Approved :: MIT X11",
+        "License :: OSI Approved :: MIT License",
         ],
       keywords='python, nilsimsa, hash, locality-sensitive, duplicate detection',
       author='Nithin Tumma',
