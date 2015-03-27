@@ -2,10 +2,11 @@
 
 from setuptools import setup
 
-version = '0.2.0'
+from version import get_git_version
+VERSION, SOURCE_HASH = get_git_version()
 
 setup(name='nilsimsa',
-      version=version,
+      version=VERSION,
       description="Locality-sensitive hashing",
       long_description="""\
 Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike hashes, a small change in the message results in a small change in the nilsimsa code. Such a function is called a locality-sensitive hash."  http://ixazon.dynip.com/~cmeclax/nilsimsa.html.""",
@@ -17,11 +18,11 @@ Python port of nilsimsa.  "A nilsimsa code is something like a hash, but unlike 
         "License :: OSI Approved :: MIT X11",
         ],
       keywords='python, nilsimsa, hash, locality-sensitive, duplicate detection',
-      author'Nithin Tumma',
+      author='Nithin Tumma',
       maintainer='nithintumma',
       author_email='nithintumma gmail',
-      url='http://code.google.com/p/py-nilsimsa/',
-      license="MIT X11",
+      url='https://github.com/diffeo/py-nilsimsa/',
+      license="X/MIT http://opensource.org/licenses/MIT",
       zip_safe=False,
       install_requires=[],
       entry_points="""
