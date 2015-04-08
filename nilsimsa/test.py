@@ -5,8 +5,9 @@ Test data consists of 20 randomly selected documents from a Diffeo corpus.
 
 This software is released under an MIT/X11 open source license.
 
-Copyright 2012-2014 Diffeo, Inc.
+Copyright 2012-2015 Diffeo, Inc.
 """
+#from __future__ import absolute_path, division, print_function
 import cPickle as pickle
 import dircache
 import os
@@ -16,9 +17,10 @@ import random
 from deprecated._deprecated_nilsimsa import Nilsimsa as orig_Nilsimsa
 from nilsimsa import Nilsimsa, compare_digests
 
-
-test_data_dir = "test_data/"
-sid_to_nil = pickle.load(open("test_data/test_dict.p", "rb"))
+test_data_dir = os.path.join(os.path.dirname(__file__), "test_data/")
+test_data = "test_dict.p"
+test_dict = os.path.join(test_data_dir, test_data)
+sid_to_nil = pickle.load(open(test_dict, "rb"))
 
 def test_nilsimsa():
     """
@@ -31,6 +33,13 @@ def test_nilsimsa():
     nil = Nilsimsa(f.read())
     f.close()
     assert nil.hexdigest() == sid_to_nil[fname.split(".")[0]]
+
+def test_unicode():
+    """
+    ensures that feeding unicode to Nilsimsa behaves gracefully
+    """
+    nil = Nilsimsa(u'\u1F631')
+    assert nil.hexdigest()
 
 def test_compare_hex():
     """

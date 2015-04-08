@@ -73,6 +73,8 @@ class Nilsimsa(object):
         self.acc = [0] * 256        # 256-bit vector to hold the results of the digest
         self.window = []            # holds the window of the last 4 characters
         if data:
+            if isinstance(data, unicode):
+                data = data.encode('utf8')
             for chunk in data:
                 self.process(chunk)
 
