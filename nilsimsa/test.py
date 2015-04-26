@@ -7,14 +7,15 @@ This software is released under an MIT/X11 open source license.
 
 Copyright 2012-2015 Diffeo, Inc.
 """
-#from __future__ import absolute_path, division, print_function
+from __future__ import absolute_import, division
 import cPickle as pickle
 import dircache
 import os
 import pytest
 import random
+import time
 
-from deprecated._deprecated_nilsimsa import Nilsimsa as orig_Nilsimsa
+from nilsimsa.deprecated._deprecated_nilsimsa import Nilsimsa as orig_Nilsimsa
 from nilsimsa import Nilsimsa, compare_digests
 
 test_data_dir = os.path.join(os.path.dirname(__file__), "test_data/")
@@ -49,6 +50,42 @@ def test_compare_hex():
     sid_2 = "1338103128-006193af403dcc90c962184df08960a3"
     assert compare_digests(sid_to_nil[sid_1], sid_to_nil[sid_2]) == 95
 
+def test_compare_threshold():
+    """
+    tests compare_digests by computing the nilsimsa score of two
+    documents with a known score and the threshold set well above that
+    score, so that it bails out early
+    """
+    sid_1 = "1352396387-81c1161097f9f00914e1b152ca4c0f46"
+    sid_2 = "1338103128-006193af403dcc90c962184df08960a3"
+    threshold = 110
+    score = compare_digests(sid_to_nil[sid_1], sid_to_nil[sid_2], threshold=threshold)
+    assert score == threshold - 1
+
+def test_compare_threshold_speed_performance():
+    """
+    check that using threshold is faster than not
+    """
+    sid_1 = "1352396387-81c1161097f9f00914e1b152ca4c0f46"
+    sid_2 = "1338103128-006193af403dcc90c962184df08960a3"
+    threshold = 110
+    num_compares = 100
+    start = time.time()
+    for _ in range(num_compares):
+        score = compare_digests(sid_to_nil[sid_1], sid_to_nil[sid_2], threshold=threshold)
+    elapsed_with = time.time() - start
+    print '\nWITH    thresholding: %d comparisons in %f seconds --> %.f per second' % (
+        num_compares, elapsed_with, num_compares / elapsed_with)
+    start = time.time()
+    for _ in range(num_compares):
+        score = compare_digests(sid_to_nil[sid_1], sid_to_nil[sid_2], threshold=None)
+    elapsed_without = time.time() - start
+    print 'WITHOUT thresholding: %d comparisons in %f seconds --> %.f per second' % (
+        num_compares, elapsed_without, num_compares / elapsed_without)
+    ## check it
+    assert elapsed_without > elapsed_with
+
+
 def test_compatability():
     """
     testing compat with deprecated version by comparing nilsimsa
@@ -64,4 +101,3 @@ def test_compatability():
         if not(Nilsimsa(text).hexdigest() == orig_Nilsimsa(text).hexdigest()):
             assert False
     assert True
-
