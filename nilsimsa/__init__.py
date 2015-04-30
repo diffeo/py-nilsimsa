@@ -176,7 +176,7 @@ class Nilsimsa(object):
 
         # convert hex string to list of ints
         if is_hex:
-            digest_2 = [int(digest_2[i:i+2], 16) for i in range(0, 63, 2)]
+            digest_2 = convert_hex_to_ints(digest_2)
 
         bit_diff = 0
         for i in range(len(digest)):
@@ -184,6 +184,9 @@ class Nilsimsa(object):
 
         return 128 - bit_diff       # -128 <= nilsimsa score <= 128
 
+
+def convert_hex_to_ints(hexdigest):
+    return [int(hexdigest[i:i+2], 16) for i in range(0, 63, 2)]
 
 def compare_digests(digest_1, digest_2, is_hex_1=True, is_hex_2=True, threshold=None):
     """
@@ -200,20 +203,22 @@ def compare_digests(digest_1, digest_2, is_hex_1=True, is_hex_2=True, threshold=
 
     """
     # if we have both hexes use optimized method
+    if threshold is not None:
+        threshold -= 128
+        threshold *= -1
     if is_hex_1 and is_hex_2:
         bits =  0
         for i in xrange(0, 63, 2):
             bits += POPC[255 & int(digest_1[i:i+2], 16) ^ int(digest_2[i:i+2], 16)]
-            if threshold is not None and 128 - bits < threshold: break
+            if threshold is not None and bits > threshold: break
         return 128 - bits
     else:
         # at least one of the inputs is a list of unsigned ints
-        if is_hex_1:
-            digest_1 =  [int(digest_1[i:i+2], 16) for i in range(0, 63, 2)]
-        if is_hex_2:
-            digest_2 =  [int(digest_2[i:i+2], 16) for i in range(0, 63, 2)]
+        if is_hex_1:  digest_1 = convert_hex_to_ints(digest_1)
+        if is_hex_2:  digest_2 = convert_hex_to_ints(digest_2)
         bit_diff = 0
         for i in range(len(digest_1)):
             bit_diff += POPC[255 & digest_1[i] ^ digest_2[i]]
+            if threshold is not None and bit_diff > threshold: break
         return 128 - bit_diff
 

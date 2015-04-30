@@ -16,7 +16,7 @@ import random
 import time
 
 from nilsimsa.deprecated._deprecated_nilsimsa import Nilsimsa as orig_Nilsimsa
-from nilsimsa import Nilsimsa, compare_digests
+from nilsimsa import Nilsimsa, compare_digests, convert_hex_to_ints
 
 test_data_dir = os.path.join(os.path.dirname(__file__), "test_data/")
 test_data = "test_dict.p"
@@ -60,6 +60,20 @@ def test_compare_threshold():
     sid_2 = "1338103128-006193af403dcc90c962184df08960a3"
     threshold = 110
     score = compare_digests(sid_to_nil[sid_1], sid_to_nil[sid_2], threshold=threshold)
+    assert score == threshold - 1
+
+def test_compare_threshold_hex():
+    """
+    tests compare_digests by computing the nilsimsa score of two
+    documents with a known score and the threshold set well above that
+    score, so that it bails out early
+    """
+    sid_1 = "1352396387-81c1161097f9f00914e1b152ca4c0f46"
+    sid_2 = "1338103128-006193af403dcc90c962184df08960a3"
+    threshold = 110
+    digest_1 = convert_hex_to_ints(sid_to_nil[sid_1])
+    digest_2 = convert_hex_to_ints(sid_to_nil[sid_2])
+    score = compare_digests(digest_1, digest_2, is_hex_1=False, is_hex_2=False,threshold=threshold)
     assert score == threshold - 1
 
 def test_compare_threshold_speed_performance():
