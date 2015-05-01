@@ -35,6 +35,22 @@ def test_nilsimsa():
     f.close()
     assert nil.hexdigest() == sid_to_nil[fname.split(".")[0]]
 
+def test_nilsimsa_speed():
+    """
+    computes nilsimsa hash for all test files and prints speed
+    """
+    corpus = []
+    for fname in dircache.listdir(test_data_dir):
+        f = open(os.path.join(test_data_dir, fname), "rb")
+        corpus.append(f.read())
+        f.close()
+    start = time.time()
+    for text in corpus:
+        Nilsimsa(text)
+    elapsed = time.time() - start
+    print "%d in %f --> %f per second" % (
+        len(corpus), elapsed, len(corpus)/elapsed)
+
 def test_unicode():
     """
     ensures that feeding unicode to Nilsimsa behaves gracefully
