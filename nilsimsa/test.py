@@ -92,30 +92,6 @@ def test_compare_threshold_hex():
     score = compare_digests(digest_1, digest_2, is_hex_1=False, is_hex_2=False,threshold=threshold)
     assert score == threshold - 1
 
-def test_compare_threshold_speed_performance():
-    """
-    check that using threshold is faster than not
-    """
-    sid_1 = "1352396387-81c1161097f9f00914e1b152ca4c0f46"
-    sid_2 = "1338103128-006193af403dcc90c962184df08960a3"
-    threshold = 110
-    num_compares = 100
-    start = time.time()
-    for _ in range(num_compares):
-        score = compare_digests(sid_to_nil[sid_1], sid_to_nil[sid_2], threshold=threshold)
-    elapsed_with = time.time() - start
-    print '\nWITH    thresholding: %d comparisons in %f seconds --> %.f per second' % (
-        num_compares, elapsed_with, num_compares / elapsed_with)
-    start = time.time()
-    for _ in range(num_compares):
-        score = compare_digests(sid_to_nil[sid_1], sid_to_nil[sid_2], threshold=None)
-    elapsed_without = time.time() - start
-    print 'WITHOUT thresholding: %d comparisons in %f seconds --> %.f per second' % (
-        num_compares, elapsed_without, num_compares / elapsed_without)
-    ## check it
-    assert elapsed_without > elapsed_with
-
-
 def test_compatability():
     """
     testing compat with deprecated version by comparing nilsimsa
