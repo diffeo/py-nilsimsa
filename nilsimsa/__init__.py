@@ -19,6 +19,20 @@ This software is released under an MIT/X11 open source license.
 Copyright 2012-2014 Diffeo, Inc.
 """
 
+import sys
+
+if sys.version_info[0] >= 3:
+    PY3 = True
+    text_type = str
+    range_ = range
+else:
+    PY3 = False
+    text_type = unicode
+    range_ = xrange
+
+def is_iterable_non_string(obj):
+    return hasattr(obj, '__iter__') and not isinstance(obj, (bytes, text_type))
+
 # Constant used in tran53 hash function, contains values 0 <= x <= 255
 # see implementation of tran_hash() below for details on usage
 TRAN = [ord(x) for x in
@@ -73,10 +87,14 @@ class Nilsimsa(object):
         self.acc = [0] * 256        # 256-bit vector to hold the results of the digest
         self.window = []            # holds the window of the last 4 characters
         if data:
-            if isinstance(data, unicode):
-                data = data.encode('utf8')
-            for chunk in data:
-                self.process(chunk)
+            if is_iterable_non_string(data):
+                for chunk in data:
+                    self.process(chunk)
+            elif isinstance(data, (bytes, text_type)):
+                self.process(data)
+            else:
+                raise TypeError("Excpected string, iterable or None, got {}"
+                                    .format(type(data)))
 
     def tran_hash(self, a, b, c, n):
         """implementation of the tran53 hash function"""
@@ -87,10 +105,17 @@ class Nilsimsa(object):
         computes the hash of all of the trigrams in the chunk using a window
         of length 5
         """
-        # chunk is an iterator over characters
+        if isinstance(chunk, text_type):
+            chunk = chunk.encode('utf-8')
+
+        # chunk is a byte string
         for char in chunk:
             self.num_char += 1
-            c = ord(char)
+            if PY3:
+                # In Python 3, iterating over bytes yields integers
+                c = char
+            else:
+                c = ord(char)
             if len(self.window) > 1:            # seen at least three characters
                 self.acc[self.tran_hash(c, self.window[0], self.window[1], 0)] += 1
             if len(self.window) > 2:            # seen at least four characters
@@ -208,7 +233,7 @@ def compare_digests(digest_1, digest_2, is_hex_1=True, is_hex_2=True, threshold=
         threshold *= -1
     if is_hex_1 and is_hex_2:
         bits =  0
-        for i in xrange(0, 63, 2):
+        for i in range_(0, 63, 2):
             bits += POPC[255 & int(digest_1[i:i+2], 16) ^ int(digest_2[i:i+2], 16)]
             if threshold is not None and bits > threshold: break
         return 128 - bits

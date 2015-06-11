@@ -38,6 +38,18 @@ Python port of ruby version that was inspired by a perl version:
    http://ixazon.dynip.com/~cmeclax/nilsimsa.html
 """
 
+import sys
+
+if sys.version_info[0] >= 3:
+    PY3 = True
+    text_type = str
+else:
+    PY3 = False
+    text_type = unicode
+
+def is_iterable_non_string(obj):
+    return hasattr(obj, '__iter__') and not isinstance(obj, (bytes, text_type))
+
 # $ Id: $
 
 # table used in computing trigram statistics
@@ -93,8 +105,14 @@ class Nilsimsa(object):
         self.acc = [0]*256      # accumulators for computing digest
         self.lastch = [-1]*4    # last four seen characters (-1 until set)
         if data:
-            for chunk in data:
-                self.update(chunk)
+            if is_iterable_non_string(data):
+                for chunk in data:
+                    self.update(chunk)
+            elif isinstance(data, (bytes, text_type)):
+                self.update(data)
+            else:
+                raise TypeError("Excpected string, iterable or None, got {}"
+                                    .format(type(data)))
 
     def tran3(self, a, b, c, n):
         """Get accumulator for a transition n between chars a, b, c."""
@@ -104,7 +122,10 @@ class Nilsimsa(object):
         """Add data to running digest, increasing the accumulators for 0-8
            triplets formed by this char and the previous 0-3 chars."""
         for character in data:
-            ch = ord(character)
+            if PY3:
+                ch = character
+            else:
+                ch = ord(character)
             self.count += 1
 
             # incr accumulators for triplets
@@ -184,17 +205,17 @@ def compare_hexdigests( digest1, digest2 ):
     return 128 - bits
 
 def selftest( name=None, opt=None, value=None, parser=None ):
-    print "running selftest..."
+    print("running selftest...")
     n1 = Nilsimsa()
     n1.update("abcdefgh")
     n2 = Nilsimsa(["abcd", "efgh"])
-    print "abcdefgh:\t%s" % str(n1.hexdigest()==\
-        '14c8118000000000030800000004042004189020001308014088003280000078')
-    print "abcd efgh:\t%s" % str(n2.hexdigest()==\
-        '14c8118000000000030800000004042004189020001308014088003280000078')
-    print "digest:\t\t%s" % str(n1.digest() == n2.digest())
+    print("abcdefgh:\t%s" % str(n1.hexdigest()==\
+        '14c8118000000000030800000004042004189020001308014088003280000078'))
+    print("abcd efgh:\t%s" % str(n2.hexdigest()==\
+        '14c8118000000000030800000004042004189020001308014088003280000078'))
+    print("digest:\t\t%s" % str(n1.digest() == n2.digest()))
     n1.update("ijk")
-    print "update(ijk):\t%s" % str(n1.hexdigest()==\
-        '14c811840010000c0328200108040630041890200217582d4098103280000078')
-    print "compare:\t%s" % str(n1.compare(n2.digest())==109)
-    print "compare:\t%s" % str(n1.compare(n2.hexdigest(), ishex=True)==109)
+    print("update(ijk):\t%s" % str(n1.hexdigest()==\
+        '14c811840010000c0328200108040630041890200217582d4098103280000078'))
+    print("compare:\t%s" % str(n1.compare(n2.digest())==109))
+    print("compare:\t%s" % str(n1.compare(n2.hexdigest(), ishex=True)==109))
