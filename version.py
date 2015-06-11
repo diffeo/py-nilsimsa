@@ -31,7 +31,7 @@
 #
 #   include RELEASE-VERSION
  
-__all__ = ("get_git_version")
+__all__ = ["get_git_version"]
 
 import os
 import sys
@@ -50,13 +50,13 @@ def call_git_describe(abbrev=4):
     p = None
     try:
         p = Popen(['git', 'describe', '--abbrev=%d' % abbrev],
-                  stdout=PIPE, stderr=PIPE, 
+                  stdout=PIPE, stderr=PIPE, universal_newlines=True,
                   cwd=os.path.dirname(os.path.abspath(__file__)))
         p.stderr.close()
         describe_line = p.stdout.readlines()[0].strip()
 
         p = Popen(['git', 'rev-parse', 'HEAD'],
-                  stdout=PIPE, stderr=PIPE)
+                  stdout=PIPE, stderr=PIPE, universal_newlines=True)
         p.stderr.close()
         source_hash = p.stdout.readlines()[0].strip()
         source_hash = source_hash[:abbrev]
@@ -75,16 +75,16 @@ def call_git_describe(abbrev=4):
 
         return version, source_hash
  
-    except Exception, exc:
+    except Exception as exc:
         sys.stderr.write('line: %r\n' % line)
         sys.stderr.write(traceback.format_exc(exc))
         try:
             sys.stderr.write('p.stderr.read()=%s\n' % p.stderr.read())
-        except Exception, exc:
+        except Exception as exc:
             sys.stderr.write(traceback.format_exc(exc))
         try:
             sys.stderr.write('os.getcwd()=%s\n' % os.getcwd())
-        except Exception, exc:
+        except Exception as exc:
             sys.stderr.write(traceback.format_exc(exc))
         return None, None
  
@@ -145,4 +145,4 @@ def get_git_version(abbrev=4):
  
  
 if __name__ == "__main__":
-    print get_git_version()
+    print(get_git_version())

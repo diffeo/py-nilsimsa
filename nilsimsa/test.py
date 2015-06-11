@@ -8,8 +8,15 @@ This software is released under an MIT/X11 open source license.
 Copyright 2012-2015 Diffeo, Inc.
 """
 from __future__ import absolute_import, division
-import cPickle as pickle
-import dircache
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
+try:
+    from dircache import listdir
+except ImportError:
+    from os import listdir   # dircache gone in Python 3
 import os
 import pytest
 import random
@@ -29,7 +36,7 @@ def test_nilsimsa():
     computes the nilsimsa digest and compares to the true
     value stored in the pickled sid_to_nil dictionary
     """
-    fname = random.choice(dircache.listdir(test_data_dir))
+    fname = random.choice(listdir(test_data_dir))
     f = open(os.path.join(test_data_dir, fname), "rb")
     nil = Nilsimsa(f.read())
     f.close()
@@ -40,7 +47,7 @@ def test_nilsimsa_speed():
     computes nilsimsa hash for all test files and prints speed
     """
     corpus = []
-    for fname in dircache.listdir(test_data_dir):
+    for fname in listdir(test_data_dir):
         f = open(os.path.join(test_data_dir, fname), "rb")
         corpus.append(f.read())
         f.close()
@@ -48,8 +55,8 @@ def test_nilsimsa_speed():
     for text in corpus:
         Nilsimsa(text)
     elapsed = time.time() - start
-    print "%d in %f --> %f per second" % (
-        len(corpus), elapsed, len(corpus)/elapsed)
+    print("%d in %f --> %f per second" % (
+        len(corpus), elapsed, len(corpus)/elapsed))
 
 def test_unicode():
     """
@@ -98,7 +105,7 @@ def test_compatability():
     scores of 5 randomly selected documents from the test corpus
     and asserting that both give the same hexdigest
     """
-    names = dircache.listdir(test_data_dir)
+    names = listdir(test_data_dir)
     fnames = set([random.choice(names) for i in range(5)])
     for fname in fnames:
         f = open(os.path.join(test_data_dir, fname), "rb")
