@@ -82,7 +82,7 @@ class Nilsimsa(object):
     """
     def __init__(self, data = None):
         # data comes as an iterator over chunks, which are an iterator over characters
-        self.complete = False       # flag to prevent re-computation
+        self._digest = None
         self.num_char = 0           # Number of characters that we have come across
         self.acc = [0] * 256        # 256-bit vector to hold the results of the digest
         self.window = []            # holds the window of the last 4 characters
@@ -105,6 +105,8 @@ class Nilsimsa(object):
         computes the hash of all of the trigrams in the chunk using a window
         of length 5
         """
+        self._digest = None
+
         if isinstance(chunk, text_type):
             chunk = chunk.encode('utf-8')
 
@@ -139,8 +141,6 @@ class Nilsimsa(object):
     def compute_digest(self):
         """
         using a threshold (mean of the accumulator), computes the nilsimsa digest
-        after completion sets complete flag to true and stores result in
-        self.digest
         """
         num_trigrams = 0
         if self.num_char == 3:          # 3 chars -> 1 trigram
@@ -158,24 +158,21 @@ class Nilsimsa(object):
             if self.acc[i] > threshold:
                 digest[i >> 3] += 1 << (i & 7)      # equivalent to i/8, 2**(i mod 7)
 
-        self.complete = True            # set flag to True
-        self.digest = digest[::-1]      # store result in digest, reversed
+        self._digest = digest[::-1]      # store result in digest, reversed
 
+    @property
     def digest(self):
         """
         returns the digest, if it has not been computed, calls compute_digest
         """
-        if not self.complete:
+        if self._digest is None:
             self.compute_digest()
-        return self.digest
+        return self._digest
 
     def hexdigest(self):
         """
         computes the hex of the digest
         """
-        if not self.complete:
-            self.compute_digest()
-
         return ''.join('%02x'%i for i in self.digest)
 
     def __str__(self):
@@ -194,18 +191,13 @@ class Nilsimsa(object):
         returns difference between the nilsimsa digests between the current
         object and a given digest
         """
-        if not self.complete:
-            digest = self.compute_digest()
-        else:
-            digest = self.digest
-
         # convert hex string to list of ints
         if is_hex:
             digest_2 = convert_hex_to_ints(digest_2)
 
         bit_diff = 0
-        for i in range(len(digest)):
-            bit_diff += POPC[digest[i] ^ digest_2[i]]           #computes the bit diff between the i'th position of the digests
+        for i in range(len(self.digest)):
+            bit_diff += POPC[self.digest[i] ^ digest_2[i]]           #computes the bit diff between the i'th position of the digests
 
         return 128 - bit_diff       # -128 <= nilsimsa score <= 128
 
